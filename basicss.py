@@ -22,7 +22,7 @@ def everything_at_once(x, square, angle, stuff, cash, a, a1, a2):
                 flag = 1
         if flag == 0:
             prime_number.append(i)
-    print(prime_number)
+    print('1)', prime_number)
     """
     Ex. 2.
     Sorts the given list with the selection choice.
@@ -35,7 +35,7 @@ def everything_at_once(x, square, angle, stuff, cash, a, a1, a2):
             if x[i] <= min:
                 min = x[i]
                 x[j], x[i] = x[i], x[j]
-
+    print('2)', x)
     """
     Ex. 3.
     Rotates the given square by the given angle.
@@ -45,9 +45,7 @@ def everything_at_once(x, square, angle, stuff, cash, a, a1, a2):
             sqnew[i][0] = (square[i][0] - ((square[0][0] + square[2][0])/2))*cos(angle) - (square[i][1] - ((square[0][1] + square[2][1])/2))*sin(angle)
             sqnew[i][1] = (square[i][0] - ((square[0][0] + square[2][0])/2))*sin(angle) + (square[i][1] - ((square[0][1] + square[2][1])/2))*cos(angle)
             sqnew[i] = tuple(sqnew[i])
-        print(sqnew)
-
-
+        print('3)', sqnew)
     """
     Ex. 4.
     Checks if cash is enough to buy every piece of stuff
@@ -56,16 +54,16 @@ def everything_at_once(x, square, angle, stuff, cash, a, a1, a2):
         for key in stuff:
             if item[key] < cash:
                 a.append(key)
-        print(a)
+        print('4)', a)
     """
     Ex. 5.
     Everything is quite simple, I quess.
     """
         set1 = set(a)
-        print(list(set1))
+        print('5)', list(set1))
     """
     Ex. 6.
     This is also simple.
     """
         a3 = a1.difference(a2)
-        print(a3)
+        print('6)', a3)
