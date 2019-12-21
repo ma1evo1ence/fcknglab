@@ -12,10 +12,6 @@ import hit_check
 
 # Time step for delayed jobs
 DT = 30
-# gravity
-g = 0.07
-# k
-k = 0.8
 VICTORY_MSG_TIME = 3000
 WINDOW_SHAPE = (800, 600)
 
@@ -62,6 +58,8 @@ class Ball(Agent):
             y,
             vx,
             vy,
+            a=2,
+            k=-0.7,
             color=None,
             live=None,
             job_init=None
@@ -73,9 +71,10 @@ class Ball(Agent):
         self.x = x
         self.y = y
         self.r = 10
+        self.a = a
+        self.k = k
         self.vx = vx
         self.vy = vy
-        self.in_air = True
         if color is None:
             self.color = choice(['blue', 'green', 'red', 'brown'])
         else:
@@ -107,28 +106,27 @@ class Ball(Agent):
     def pause(self):
         super().pause()
 
-    def collision(self):
-        if self.x > 800 - self.r:
-            self.vx = -k * self.vx
-            self.x = 800 - self.r - 1
-        if self.x < self.r:
-            self.vx = -k * self.vx
-            self.x = self.r + 1
-        if self.y > 600 - self.r:
-            self.vy = -k * self.vy
-            self.y = 600 - self.r - 1
-        if self.y < self.r:
-            self.vy = -k * self.vy
-            self.y = self.r + 1
+    def check_walls(self):
+        if self.x >= 800 - self.r:
+            self.vx = self.k * self.vx
+            self.vy = -self.k * self.vy
+            self.x -= self.r
 
-    def calculate_coords(self):
-        self.collision()
-        self.x += self.vx
-        self.vy -= g * DT
-        self.y -= self.vy
+        if self.x <= self.r:
+            self.vx = self.k * self.vx
+            self.vy = -self.k * self.vy
+            self.x += self.r
+
+        if self.y >= 600 - self.r:
+            self.vy = self.k * self.vy
+            self.vx = -self.k * self.vx
+            self.y -= self.r
 
     def update(self):
-        self.calculate_coords()
+        self.check_walls()
+        self.vy -= self.a
+        self.x += self.vx
+        self.y -= self.vy
         self.set_coords()
         targets_hit = self.hit_targets()
         if targets_hit:
@@ -183,7 +181,7 @@ class Ball(Agent):
 
 
 class Gun(Agent):
-    def __init__(self, canvas, coords=[20, 450]):
+    def __init__(self, canvas, x, y):
         super().__init__()
 
         self.gun_velocity = 1
@@ -192,7 +190,9 @@ class Gun(Agent):
         self.max_gun_power = 70
         self.zero_power_length = 20
 
-        self.gun_coords = coords
+        self.x = x
+        self.y = y
+        self.gun_coords = [self.x, self.y]
         self.vy = 0
         self.mouse_coords = [None, None]
         self.f2_power = 10
@@ -242,7 +242,10 @@ class Gun(Agent):
         self.mouse_coords = self.canvas.get_mouse_coords()
         dx = self.mouse_coords[0]-self.gun_coords[0]
         dy = self.mouse_coords[1]-self.gun_coords[1]
-        self.an = math.atan2(dy, dx)
+        if dx != 0:
+            self.an = math.atan2(dy, dx)
+        else:
+            self.an = 1
 
     def get_gunpoint(self):
         length = self.f2_power + self.zero_power_length
@@ -323,20 +326,47 @@ class Gun(Agent):
 
 class Target(Agent):
     def __init__(
-            self, canvas, x=None, y=None, r=None, vy=None, color=None, job_init=None):
+            self, canvas, x=None, y=None, v_x=None, v_y=None, r=None, color=None, job_init=None):
         super().__init__()
         self.job = job_init
 
-        x = self.x = rnd(350, 480) if x is None else x
-        y = self.y = rnd(300, 450) if y is None else y
+        x = self.x = rnd(200, 600) if x is None else x
+        y = self.y = rnd(100, 500) if y is None else y
         r = self.r = rnd(2, 50) if r is None else r
-        vy = self.vy = rnd(-10, 10) if vy is None else vy
+        v_x = self.v_x = rnd(-5, 5) if v_x is None else v_x
+        v_y = self.v_y = rnd(-5, 5) if v_y is None else v_y
         color = self.color = 'red' if color is None else color
 
         self.canvas = canvas
         self.id = self.canvas.create_oval(x-r, y-r, x+r, y+r, fill=color)
 
         self.canvas.targets[self.id] = self
+
+    def set_coords(self):
+        self.canvas.coords(
+                self.id,
+                self.x - self.r,
+                self.y - self.r,
+                self.x + self.r,
+                self.y + self.r
+        )
+
+    def check_walls(self):
+        if self.x >= 800 - self.r:
+            self.v_x = - self.v_x
+            self.x -= self.r
+
+        if self.x <= self.r:
+            self.v_x = - self.v_x
+            self.x += self.r
+
+        if self.y >= 500 - self.r:
+            self.v_y = -self.v_y
+            self.y -= self.r
+
+        if self.y <= self.r:
+            self.v_y = -self.v_y
+            self.y += self.r
 
     def start(self):
         super().start()
@@ -351,28 +381,16 @@ class Target(Agent):
         super().pause()
 
     def update(self):
-        self.move()
         self.job = self.canvas.after(DT, self.update)
+        self.check_walls()
+        self.x += self.v_x
+        self.y -= self.v_y
+        self.set_coords()
 
     def destroy(self):
         self.stop()
         self.canvas.delete(self.id)
         del self.canvas.targets[self.id]
-
-    def set_coords(self):
-        self.canvas.coords(
-                self.id,
-                self.x - self.r,
-                self.y - self.r,
-                self.x + self.r,
-                self.y + self.r
-        )
-
-    def move(self):
-        if self.y > 500 or self.y < 100:
-            self.vy = -self.vy
-        self.y -= self.vy
-        self.set_coords()
 
     def get_state(self):
         state = {
@@ -391,34 +409,34 @@ class BattleField(tk.Canvas):
 
         self.num_targets = 2
 
-        self.gun_left = Gun(self, [20, 450])
-        self.gun_right = Gun(self, [750, 450])
+        self.gun_1 = Gun(self, 30, 450)
+        self.gun_2 = Gun(self, 750, 450)
+
+        self.gun_on = 2
 
         self.targets = {}
         self.bullets = {}
 
+        self.get_root().bind('<Key-c>', self.change_guns)
         # Переменная для присвоения номеров выпущенным пулям.
-        # Номера используются для определения, каким по счету выстрелом была
+        # Номера используются для определения, каким по счту выстрелом была
         # уничтожена цель. Отсчет начинается с единицы.
         self.bullet_counter = 0
         self.last_hit_bullet_number = None
-        self.victory_text_id = self.create_text(
+        self.victory_text = self.create_text(
             WINDOW_SHAPE[0] // 2, WINDOW_SHAPE[1] // 2, text='', font='28')
-
         self.catch_victory_job = None
         self.canvas_restart_job = None
-        self.active_gun = 'left'
-        self.get_root().bind('<Key-g>', self.change_gun)
 
-    def change_gun(self, event):
-        if self.active_gun == 'left':
-            self.active_gun = 'right'
-            self.gun_left.stop()
-            self.gun_right.start()
+    def change_guns(self, event):
+        if self.gun_on == 1:
+            self.gun_1.stop()
+            self.gun_2.start()
+            self.gun_on = 2
         else:
-            self.active_gun = 'left'
-            self.gun_right.stop()
-            self.gun_left.start()
+            self.gun_2.stop()
+            self.gun_1.start()
+            self.gun_on = 1
 
     def remove_targets(self, targets_to_remove=None):
         if targets_to_remove is None:
@@ -460,10 +478,8 @@ class BattleField(tk.Canvas):
 
     def start(self):
         self.catch_victory_job = self.after(DT, self.catch_victory)
-        if self.active_gun == 'left':
-            self.gun_left.start()
-        else:
-            self.gun_right.start()
+        self.gun_1.start()
+        self.gun_2.start()
         for t in self.targets.values():
             t.start()
         for b in self.bullets.values():
@@ -478,18 +494,16 @@ class BattleField(tk.Canvas):
 
     def play(self):
         self.play_jobs()
-        if self.active_gun == 'left':
-            self.gun_left.play()
-        else:
-            self.gun_right.play()
+        self.gun_1.play()
+        self.gun_2.play()
         for t in self.targets.values():
             t.play()
         for b in self.bullets.values():
             b.play()
 
     def stop(self):
-        self.gun_left.stop()
-        self.gun_right.stop()
+        self.gun_1.stop()
+        self.gun_2.stop()
         for t in self.targets.values():
             t.stop()
         for b in self.bullets.values():
@@ -510,8 +524,8 @@ class BattleField(tk.Canvas):
             self.canvas_restart_job = 'pause'
 
     def pause(self):
-        self.gun_left.pause()
-        self.gun_right.pause()
+        self.gun_1.pause()
+        self.gun_2.pause()
         for t in self.targets.values():
             t.pause()
         for b in self.bullets.values():
@@ -520,7 +534,7 @@ class BattleField(tk.Canvas):
 
     def restart(self):
         self.stop()
-        self.itemconfig(self.victory_text_id, text='')
+        self.itemconfig(self.victory_text, text='')
         self.remove_targets()
         self.remove_bullets()
         self.create_targets()
@@ -542,7 +556,7 @@ class BattleField(tk.Canvas):
 
     def show_victory_text(self):
         self.itemconfig(
-            self.victory_text_id,
+            self.victory_text,
             text='Вы уничтожили цели {}-м выстрелом'.format(
                 self.last_hit_bullet_number))
         self.canvas_restart_job = self.after(VICTORY_MSG_TIME, self.restart)
@@ -568,62 +582,55 @@ class BattleField(tk.Canvas):
 
     def get_state(self):
         state = {
-            "gun_left": self.gun_left.get_state(),
-            "gun_right": self.gun_right.get_state(),
+            "gun_1": self.gun_1.get_state(),
+            "gun_2": self.gun_2.get_state(),
             "targets": [t.get_state() for t in self.targets.values()],
             "bullets": [b.get_state() for b in self.bullets.values()],
             "bullet_counter": self.bullet_counter,
             "last_hit_bullet_number": self.last_hit_bullet_number,
-            "victory_text": self.itemcget(self.victory_text_id, 'text'),
+            "victory_text": self.itemcget(self.victory_text, 'text'),
             "catch_victory_job": self.catch_victory_job is not None,
             "canvas_restart_job": self.canvas_restart_job is not None
         }
         return state
 
     def set_state(self, state, job_init):
-        self.gun_left.set_state(state['gun_left'], job_init)
-        self.gun_right.set_state(state['gun_right'], job_init)
+        self.gun_1.set_state(state['gun_1'], job_init)
+        self.gun_2.set_state(state['gun_2'], job_init)
         self.remove_targets()
         self.create_targets_from_states(state['targets'], job_init)
         self.remove_bullets()
         self.create_bullets_from_states(state['bullets'], job_init)
         self.bullet_counter = state['bullet_counter']
         self.last_hit_bullet_number = state['last_hit_bullet_number']
-        self.itemconfig(self.victory_text_id, text=state['victory_text'])
+        self.itemconfig(self.victory_text, text=state['victory_text'])
         self.catch_victory_job = \
             job_init if state['catch_victory_job'] else None
         self.canvas_restart_job = \
             job_init if state['canvas_restart_job'] else None
 
 
-
 class MainFrame(tk.Frame):
     def __init__(self, master):
         super().__init__(master)
-        self.left_score = 0
-        self.score_tmpl = 'Score: {}'
-        self.left_score_label = tk.Label(
-            self,
-            text=self.score_tmpl.format(self.left_score),
-            font=("Times New Roman", 36)
-        )
-        self.left_score_label.pack(anchor='nw')
 
-        self.right_score = 0
+        self.score = 0
         self.score_tmpl = 'Score: {}'
-        self.right_score_label = tk.Label(
+        self.score_label = tk.Label(
             self,
-            text=self.score_tmpl.format(self.right_score),
-            font=("Times New Roman", 36)
+            text=self.score_tmpl.format(self.score),
+            font=("Roboto", 36)
         )
-        self.right_score_label.pack(anchor='ne')
+        self.score_label.pack()
+        self.gun_change_text = tk.Label(text='Press C to change guns', font=('Roboto', 26))
+        self.gun_change_text.pack()
 
         self.battlefield = BattleField(self)
         self.battlefield.pack(fill=tk.BOTH, expand=1)
 
     def new_game(self):
-        self.left_score = 0
-        self.left_score_label['text'] = self.score_tmpl.format(self.left_score)
+        self.score = 0
+        self.score_label['text'] = self.score_tmpl.format(self.score)
         self.battlefield.restart()
 
     def stop(self):
@@ -636,19 +643,19 @@ class MainFrame(tk.Frame):
         self.battlefield.pause()
 
     def report_hit(self, bullet, target):
-        self.left_score += 1
-        self.left_score_label['text'] = self.score_tmpl.format(self.left_score)
+        self.score += 1
+        self.score_label['text'] = self.score_tmpl.format(self.score)
 
     def get_state(self):
         state = {
-            'score': self.left_score,
+            'score': self.score,
             'battlefield': self.battlefield.get_state()
         }
         return state
 
     def set_state(self, state, job_init):
-        self.left_score = state['score']
-        self.left_score_label['text'] = self.score_tmpl.format(self.left_score)
+        self.score = state['score']
+        self.score_label['text'] = self.score_tmpl.format(self.score)
         self.battlefield.set_state(state['battlefield'], job_init)
 
 
@@ -752,7 +759,7 @@ class GunGameApp(tk.Tk):
         file_name = self.get_save_file_name()
         if file_name is not None:
             with open(file_name, 'w') as f:
-                # Аргумент `indent` обеспечивает за красивое
+                # Аргумент `indent` отвечает за красивое
                 # оформление JSON файла.
                 json.dump(game_state, f, indent=2)
         self.play()
@@ -772,8 +779,7 @@ class GunGameApp(tk.Tk):
         self.main_frame.new_game()
 
     def pause(self):
-        """
-        Приостанавливает игру. Отложенным задачам присваивается значение
+        """Приостанавливает игру. Отложенным задачам присвваивается значение
         `'pause'`. Игру можно возобновить с помощью метода
         `GunGameApp.play()`.
         """
