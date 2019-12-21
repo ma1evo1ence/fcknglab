@@ -1,3 +1,6 @@
+import math as m
+
+
 def everything_at_once(x, square, angle, stuff, cash, a, a1, a2):
     """
     Six exercizes are included here.
@@ -27,23 +30,24 @@ def everything_at_once(x, square, angle, stuff, cash, a, a1, a2):
     Ex. 2.
     Sorts the given list with the selection choice.
     """
-    length = len(x)
-    min = x[0]
-    for j in range(length):
-        for i in range(j, length):
-            min = x[j]
-            if x[i] <= min:
-                min = x[i]
-                x[j], x[i] = x[i], x[j]
+    for i in range(len(x)):
+        key = x[i]
+        j = i - 1
+        while x[j] > key and j >= 0:
+            x[j+1] = x[j]
+            j -= 1
+        x[j+1] = key
     print('2)', x)
     """
     Ex. 3.
     Rotates the given square by the given angle.
     """
         sqnew = [[0, 0], [0, 0],  [0, 0],  [0, 0]]
-        for i in range(4): 
-            sqnew[i][0] = (square[i][0] - ((square[0][0] + square[2][0])/2))*cos(angle) - (square[i][1] - ((square[0][1] + square[2][1])/2))*sin(angle)
-            sqnew[i][1] = (square[i][0] - ((square[0][0] + square[2][0])/2))*sin(angle) + (square[i][1] - ((square[0][1] + square[2][1])/2))*cos(angle)
+        for i in range(4):
+            sqnew[i][0] = (square[i][0] - ((square[0][0] + square[2][0])/2))*m.cos(angle) - \
+                          (square[i][1] - ((square[0][1] + square[2][1])/2))*m.sin(angle)
+            sqnew[i][1] = (square[i][0] - ((square[0][0] + square[2][0])/2))*m.sin(angle) + \
+                          (square[i][1] - ((square[0][1] + square[2][1])/2))*m.cos(angle)
             sqnew[i] = tuple(sqnew[i])
         print('3)', sqnew)
     """
