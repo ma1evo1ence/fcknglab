@@ -32,7 +32,7 @@ def everything_at_once(x, square, angle, stuff, cash, a, a1, a2):
     """
     for i in range(len(x)):
         minimum = x[i]
-	for j in range(len(x)):
+	for j in range(i + 1, len(x)):
 	    if x[j] < minimum:
 		minimun = x[j]
 		jmin = j
