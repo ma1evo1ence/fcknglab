@@ -34,7 +34,7 @@ def everything_at_once(x, square, angle, stuff, cash, a, a1, a2):
     minimum = 0
     for i in range(len(x)):
         minimum = x[i]
-        for j in range(i + 1, len(x)):
+        for j in range(i, len(x)):
             if x[j] <= minimum:
                 minimum = x[j]
                 jmin = j
