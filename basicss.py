@@ -30,14 +30,16 @@ def everything_at_once(x, square, angle, stuff, cash, a, a1, a2):
     Ex. 2.
     Sorts the given list with the selection choice.
     """
+    jmin = 0
+    minimum = 0
     for i in range(len(x)):
         minimum = x[i]
-	for j in range(i + 1, len(x)):
-	    if x[j] < minimum:
-		minimun = x[j]
-		jmin = j
-	x[jmin] = x[i]
-	x[i] = minimum
+        for j in range(i + 1, len(x)):
+            if x[j] <= minimum:
+                minimum = x[j]
+                jmin = j
+        x[jmin] = x[i]
+        x[i] = minimum
     print('2)', x)
     """
     Ex. 3.
